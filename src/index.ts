@@ -58,42 +58,16 @@ app.post(
   "/cozy-threads/create-payment-intent",
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const productIds: string[] = req.body.products;
-
-      if (!productIds || productIds.length === 0) {
-        res.status(400).json({ error: "No products provided" });
-      }
-
-      const prices = await Promise.all(
-        productIds.map(async (productId) => {
-          const product = await stripe.products.retrieve(productId);
-
-          if (!product.default_price) {
-            throw new Error(`No Price set`);
-          }
-
-          const price = await stripe.prices.retrieve(
-            product.default_price as string,
-          );
-
-          if (price.unit_amount === null) {
-            throw new Error(`Price not set`);
-          }
-
-          return price.unit_amount;
-        }),
-      );
-
-      const totalAmount = prices.reduce((sum, price) => sum + price, 0);
+      const { total } = req.body;
 
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount,
+        amount: total,
         currency: "usd",
       });
 
       res.json({
         client_secret: paymentIntent.client_secret,
-        amount: totalAmount / 100,
+        amount: total / 100,
       });
     } catch (error) {
       next(error);
